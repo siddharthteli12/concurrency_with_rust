@@ -108,4 +108,13 @@ mod tests {
         // Waits forever has sender cannot send any signal.
         assert_eq!(receiver.receive(), None);
     }
+
+    #[test]
+    fn test_with_receiver_closed() {
+        let (mut sender, mut receiver) = channel();
+        drop(receiver);
+
+        // Should not send when receiver is closed.
+        sender.send(100)
+    }
 }
