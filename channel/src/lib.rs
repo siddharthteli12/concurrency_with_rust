@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    mem,
     sync::{Arc, Condvar, Mutex},
 };
 
@@ -41,10 +42,18 @@ impl<T> Sender<T> {
 
 impl<T> Receiver<T> {
     fn receive(&mut self) -> Option<T> {
+        if let Some(value) = self.buffer.pop_front() {
+            return Some(value);
+        }
         let mut inner = self.shared.inner.lock().unwrap();
         loop {
             match inner.queue.pop_front() {
-                Some(t) => return Some(t),
+                Some(t) => {
+                    if !inner.queue.is_empty() {
+                        mem::swap(&mut inner.queue, &mut self.buffer);
+                    }
+                    return Some(t);
+                }
                 None if inner.sender == 0 => return None,
                 None => {
                     inner = self.shared.available.wait(inner).unwrap();
@@ -55,6 +64,7 @@ impl<T> Receiver<T> {
 }
 pub struct Receiver<T> {
     shared: Arc<Shared<T>>,
+    buffer: VecDeque<T>,
 }
 
 struct Inner<T> {
@@ -85,6 +95,7 @@ fn channel<T>() -> (Sender<T>, Receiver<T>) {
         },
         Receiver {
             shared: shared.clone(),
+            buffer: VecDeque::default(),
         },
     )
 }
@@ -111,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_with_receiver_closed() {
-        let (mut sender, mut receiver) = channel();
+        let (mut sender, receiver) = channel();
         drop(receiver);
 
         // Should not send when receiver is closed.
