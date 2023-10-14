@@ -1,0 +1,12 @@
+### Flavours with channel: 
+- Synchronous channels: Channel where send can block. Limited capacity.
+    - Mutex + Condvar + VecDeque. Send will block if queue is full.
+    - Atomic VecDeque (atomic queue) without mutex. For wakefull we can use thread::park + Thread::notify.
+- Asynchronous channels: Channel where send cannot block. Unlimited capacity.
+    - Issue can be sender can be much faster then receiver leading to low consumption & high production.
+    - Mutex + Condvar + VecDeque (VecDeque has issue of resizing when new item is added)
+    - To avoid resizing, Mutex + Condvar + LinkedList
+    - Atomic LinkedList
+    - Atomic block LinkedList used in crossbeam.
+- Rendezvous channels: Synchronous with capacity = 0. Used for thread synchronization.
+- Oneshot channels: Any capacity. In practice, only to call send once.
